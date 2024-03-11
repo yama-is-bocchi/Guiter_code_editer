@@ -1,2 +1,2 @@
-Scrayping_guitar_codeリポジトリのexeファイルをaddprogramフォルダに入れます。
+Scrayping_guitar_codeリポジトリのexeファイルをadd_programフォルダに入れます。
 生成したテキストファイルのオリジナルキーをもとに、コードを絶対位置に変換します
