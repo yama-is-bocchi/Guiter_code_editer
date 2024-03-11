@@ -40,8 +40,6 @@ namespace guiter_edit_code
                                                                     "D#",
                                                                     "E♭",
                                                                     "E",
-                                                                    "E#",
-                                                                    "F♭",
                                                                     "F",
                                                                     "F#",
                                                                     "G♭",

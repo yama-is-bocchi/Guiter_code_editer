@@ -176,35 +176,45 @@ namespace guiter_edit_code
             int eng_count;
             int bigspace_count;
             int smallspace_count;
-            int count ;
+            int count;
 
             foreach (string item in song_lists)
             {
 
-                eng_count=0;
-                bigspace_count=0;
-                smallspace_count=0;
+                eng_count = 0;
+                bigspace_count = 0;
+                smallspace_count = 0;
                 count = 0;
                 string work = item;
 
-                //ƒVƒƒ[ƒvó‚©‚ç•ÏŠ·
                 foreach (string num in Common.num_List)
                 {
-                    if (count == cur_sharp_lists.Count) break;
-
-                    work = work.Replace(cur_sharp_lists[count], num);
-
+                    if (cur_num_lists[count].Contains("ó"))
+                    {
+                        work = work.Replace(cur_num_lists[count], num);
+                    }
                     count++;
-                }
 
+                }
                 count = 0;
                 foreach (string num in Common.num_List)
                 {
-                    work = work.Replace(cur_num_lists[count], num);
-
+                    if (cur_num_lists[count].Contains("#"))
+                    {
+                        work = work.Replace(cur_num_lists[count], num);
+                    }
                     count++;
-                }
 
+                }
+                count = 0;
+
+                foreach (string num in Common.num_List)
+                {
+                        work = work.Replace(cur_num_lists[count], num);
+                    
+                    count++;
+
+                }
 
 
                 eng_count = (Regex.Replace(item, "[^a-zA-Z]", "")).Length;
@@ -215,11 +225,11 @@ namespace guiter_edit_code
                 {
                     ret_list.Add(item);
                 }
-                else if (item.Contains("#") || item.Contains("ó") || item.Contains("/")|| item.Contains("7"))
+                else if (item.Contains("#") || item.Contains("ó") || item.Contains("/") || item.Contains("7"))
                 {
                     ret_list.Add(work);
                 }
-                else if (eng_count>8)
+                else if (eng_count > 8)
                 {
                     ret_list.Add(item);
                 }
@@ -255,7 +265,7 @@ namespace guiter_edit_code
                 {
 
                     sw.WriteLine(item);
-                    song_label.Text += item+"\n";
+                    song_label.Text += item + "\n";
 
                 }
 
