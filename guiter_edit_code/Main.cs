@@ -15,8 +15,9 @@ namespace guiter_edit_code
         }
         private string? File_path;
         private List<string> song_lists = new List<string>();
-        private List<string> cur_num_lists = new List<string>();
-        private List<string> cur_sharp_lists = new List<string>();
+        private List<string> cur_code_lists = new List<string>();
+        private List<string> cur_roma_lists = new List<string>();
+        private Control[]? active_btn;
 
         private string? cur_key;
 
@@ -33,13 +34,17 @@ namespace guiter_edit_code
             //ダイアログを表示する
             if (ofd.ShowDialog() == DialogResult.OK)
             {
+                if (active_btn != null)
+                {
+                    active_btn[0].BackColor = Color.Black;
+                    active_btn[0].ForeColor = Color.LimeGreen;
+                    active_btn = null;
+                }
+                Init();
                 //OKボタンがクリックされたとき、選択されたファイル名を表示する
                 File_path = ofd.FileName;
                 //ラベルに歌詞を表示
-                write_song();
-
-                insert_cur_arr();
-
+                read_song();
             }
         }
 
@@ -48,11 +53,13 @@ namespace guiter_edit_code
             song_label.Text = "";
             test.Text = "";
             cur_key = "";
+            cur_code_lists.Clear();
+            cur_roma_lists.Clear();
+            song_lists.Clear();
             song_lists = new List<string>();
-            cur_num_lists = new List<string>();
         }
 
-        private void write_song()
+        private void read_song()
         {
 
             Init();
@@ -79,14 +86,111 @@ namespace guiter_edit_code
                                 cur_key = cur_key.Substring(0, 2);
                             }
                             test.Text = cur_key;
+                            song_lists.Add(liner);
                         }
-                        song_label.Text += liner + "\n";
-                        song_lists.Add(liner);
+                        else
+                        {
+                            song_label.Text += liner + "\n";
+                            song_lists.Add(liner);
+                        }
                     }
 
                 }
                 sr.Close();
             }
+
+            //現在のコードリストを取得
+            string? minus_or_measure;
+
+            if (cur_key == null) return;
+
+            if (cur_key.Contains("m"))
+            {
+                minus_or_measure = "minus";
+                minus_radio.Checked = true;
+            }
+            else
+            {
+                minus_or_measure = "measure";
+                measure_radio.Checked = true;
+            }
+
+            bool first = true;
+            int count = 0;
+            sr = new StreamReader(@"res\" + minus_or_measure + "_code.csv");//フィールドデータ読み取り
+            {
+                while (!sr.EndOfStream)
+                {
+                    string line = sr.ReadLine() + "";
+                    string[] values = line.Split("\n");
+
+                    List<string> lists = new List<string>();
+                    lists.AddRange(values);
+                    foreach (string liner in lists)
+                    {
+                        string[] work = liner.Split(",");
+
+                        if (first == true)
+                        {
+                            count = 0;
+                            foreach (string code in work)
+                            {
+                                if (code == cur_key)
+                                {
+                                    first = false;
+                                    cur_code_lists.Add(code);
+                                    test.Text += code + "\n";
+                                    break;
+                                }
+
+                                count++;
+                            }
+                            if (first == true)
+                            {
+                                cur_code_lists.Add("");
+                                test.Text += "" + "\n";
+                            }
+                        }
+                        else
+                        {
+
+                            test.Text += work[count] + "\n";
+                            cur_code_lists.Add(work[count]);
+
+                        }
+                    }
+
+                }
+                sr.Close();
+            }
+
+            sr = new StreamReader(@"res\roma_num.csv");//フィールドデータ読み取り
+            {
+                while (!sr.EndOfStream)
+                {
+                    string line = sr.ReadLine() + "";
+                    string[] values = line.Split("\n");
+
+
+
+                    List<string> lists = new List<string>();
+                    lists.AddRange(values);
+                    foreach (string liner in lists)
+                    {
+                        string[] work = liner.Split(",");
+
+
+
+                        test.Text += work[count] + "\n";
+                        cur_roma_lists.Add(work[count]);
+
+
+                    }
+
+                }
+                sr.Close();
+            }
+
         }
 
         private string extract_p_key(ref string p_line)
@@ -121,46 +225,6 @@ namespace guiter_edit_code
             }
         }
 
-        private void insert_cur_arr()
-        {
-            if (cur_key == null) return;
-            bool existed = false;
-            List<string> temp = new List<string>();
-
-            for (int i = 0; i < 18; i++)
-            {
-                if (Common.readOnlycode[i] == cur_key)
-                {
-                    existed = true;
-                    cur_num_lists.Add(Common.readOnlycode[i]);
-
-                }
-                else if (existed == true)
-                {
-                    cur_num_lists.Add(Common.readOnlycode[i]);
-                }
-                else
-                {
-                    temp.Add(Common.readOnlycode[i]);
-                }
-            }
-
-            if (temp.Count > 0)
-            {
-                foreach (string element in temp)
-                {
-                    cur_num_lists.Add((string)element);
-                }
-            }
-
-            foreach (string s in cur_num_lists)
-            {
-                if (s.Contains("#") || s.Contains("♭"))
-                {
-                    cur_sharp_lists.Add(s);
-                }
-            }
-        }
 
         private int CountChar(string s, char c)
         {
@@ -169,86 +233,153 @@ namespace guiter_edit_code
 
         private List<string> replace_num()
         {
-            string? pre_line = null;
             List<string> ret_list = new List<string>();
-
-
-            int eng_count;
-            int bigspace_count;
-            int smallspace_count;
-            int count;
 
             foreach (string item in song_lists)
             {
-
-                eng_count = 0;
-                bigspace_count = 0;
-                smallspace_count = 0;
-                count = 0;
                 string work = item;
-
-                foreach (string num in Common.num_List)
+                int eng_count = (Regex.Replace(item, "[^a-z]", "")).Length;
+                int bigspace_count = CountChar(item, '　');
+                int smallspace_count = CountChar(item, ' ');
+                //ギターコードかどうか
+                if (item.Contains("Original Key："))
                 {
-                    if (cur_num_lists[count].Contains("♭"))
+                    ret_list.Add(key_label.Text);
+                }
+                else if ((item.Contains("#") || item.Contains("7") || item.Contains("♭"))
+                    || (bigspace_count > 4 || smallspace_count > 4) && eng_count < 6)
+                {
+                    int count = 0;
+
+                    foreach (string element in cur_code_lists)
                     {
-                        work = work.Replace(cur_num_lists[count], num);
+
+                        if (element.Contains("♭") && element != "")
+                        {
+                            work = work.Replace(element, cur_roma_lists[count]);
+                        }
+
+                        count++;
                     }
-                    count++;
+
+                    count = 0;
+
+                    foreach (string element in cur_code_lists)
+                    {
+                        if (element.Contains("#") && element != "")
+                        {
+                            work = work.Replace(element, cur_roma_lists[count]);
+                        }
+
+                        count++;
+                    }
+
+                    count = 0;
+
+                    foreach (string element in cur_code_lists)
+                    {
+                        if (element != "")
+                        {
+                            work = work.Replace(element, cur_roma_lists[count]);
+
+                        }
+
+                        count++;
+                    }
+
+                    ret_list.Add(work);
 
                 }
-                count = 0;
-                foreach (string num in Common.num_List)
+                else
                 {
-                    if (cur_num_lists[count].Contains("#"))
-                    {
-                        work = work.Replace(cur_num_lists[count], num);
-                    }
-                    count++;
-
-                }
-                count = 0;
-
-                foreach (string num in Common.num_List)
-                {
-                        work = work.Replace(cur_num_lists[count], num);
                     
-                    count++;
-
+                        ret_list.Add(item);
+                    
                 }
 
+            }
+            return ret_list;
+        }
 
-                eng_count = (Regex.Replace(item, "[^a-zA-Z]", "")).Length;
-                bigspace_count = CountChar(item, '　');
-                smallspace_count = CountChar(item, ' ');
 
-                if (pre_line == null)
+        private List<string> replace_code(ref List<string> pre_list)
+        {
+            List<string> ret_list = new List<string>();
+
+            foreach (string item in song_lists)
+            {
+                string work = item;
+                int eng_count = (Regex.Replace(item, "[^a-z]", "")).Length;
+                int bigspace_count = CountChar(item, '　');
+                int smallspace_count = CountChar(item, ' ');
+                //ギターコードかどうか
+                if (item.Contains("Original Key："))
                 {
-                    ret_list.Add(item);
+                    ret_list.Add(key_label.Text);
+
                 }
-                else if (item.Contains("#") || item.Contains("♭") || item.Contains("/") || item.Contains("7"))
+                else if ((item.Contains("#") || item.Contains("7") || item.Contains("♭"))
+                    || (bigspace_count > 4 || smallspace_count > 4) && eng_count < 6)
                 {
-                    ret_list.Add(work);
-                }
-                else if (eng_count > 8)
-                {
-                    ret_list.Add(item);
-                }
-                else if (eng_count < 5)
-                {
-                    ret_list.Add(work);
-                }
-                else if (bigspace_count > 4 || smallspace_count > 4)
-                {
+                    int count = 0;
+                    foreach (string element in cur_code_lists)
+                    {
+
+                        if (element.Contains("♭") && pre_list[count] != "" && element != null)
+                        {
+                            work = work.Replace(pre_list[count], element.Replace("♭", "").ToLower() + "♭");
+                        }
+                        else if (element == null && pre_list[count] != null)
+                        {
+                            work = work.Replace(pre_list[count], "");
+                        }
+                        count++;
+                    }
+
+                    count = 0;
+                    foreach (string element in cur_code_lists)
+                    {
+
+                        if (element.Contains("#") && pre_list[count] != "" && element != null)
+                        {
+                            work = work.Replace(pre_list[count], element.Replace("#", "").ToLower() + "#");
+                        }
+                        else if (element == null && pre_list[count] != null)
+                        {
+                            work = work.Replace(pre_list[count], "");
+                        }
+                        count++;
+                    }
+
+                    count = 0;
+                    foreach (string element in cur_code_lists)
+                    {
+
+                        if (pre_list[count] != "" && !element.Contains("♭") && !element.Contains("#") && element != null)
+                        {
+                            work = work.Replace(pre_list[count], element.ToLower());
+                        }
+                        else if (element == null && pre_list[count] != "")
+                        {
+                            work = work.Replace(pre_list[count], "");
+                        }
+                        count++;
+                    }
+                    work = work.ToUpper();
+
+                    work = work.Replace("M", "m");
+
                     ret_list.Add(work);
                 }
                 else
                 {
+
                     ret_list.Add(item);
+
                 }
 
-                pre_line = item;
             }
-
+            song_lists = ret_list;
 
             return ret_list;
         }
@@ -258,7 +389,8 @@ namespace guiter_edit_code
             List<string> write_list = replace_num();
             song_label.Text = "";
             if (File_path == null) return;
-            using (StreamWriter sw = new StreamWriter(File_path.Replace(".txt", "_numver.txt"), false,
+
+            using (StreamWriter sw = new StreamWriter(File_path.Replace(".txt","_"+cur_key+"_ローマ数字ver.txt"), false,
                                 Encoding.GetEncoding("utf-8")))
             {
                 foreach (string item in write_list)
@@ -272,6 +404,165 @@ namespace guiter_edit_code
                 sw.Close();
             }
             test.Text = "完了しました";
+            comp_message.Start();
+        }
+
+        private void Code_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (active_btn != null)
+            {
+                active_btn[0].BackColor = Color.Black;
+                active_btn[0].ForeColor = Color.LimeGreen;
+            }
+
+            ((Button)sender).BackColor = Color.LimeGreen;
+            ((Button)sender).ForeColor = Color.Black;
+
+            active_btn = edit_panel.Controls.Find(((Button)sender).Name, true);
+
+            string minus_or_measure = "";
+
+            if (minus_radio.Checked == true) minus_or_measure = "m";
+
+            key_label.Text = key_label.Text.Replace("Original Key：" + cur_key, "Original Key：" + ((Button)sender).Text + minus_or_measure);
+            cur_key = ((Button)sender).Text + minus_or_measure;
+
+
+            if (cur_key.Contains("m"))
+            {
+                minus_or_measure = "minus";
+            }
+            else
+            {
+                minus_or_measure = "measure";
+            }
+
+            string temp_key = cur_key.Replace("m","");
+
+            bool first = true;
+            int count = 0;
+
+            List<string> temp_code_list = cur_code_lists;
+            cur_code_lists = new List<string>();
+            cur_roma_lists = new List<string>();
+            test.Text = "";
+
+            StreamReader sr = new StreamReader(@"res\" + minus_or_measure + "_code.csv");//フィールドデータ読み取り
+            {
+                while (!sr.EndOfStream)
+                {
+                    string line = sr.ReadLine() + "";
+                    string[] values = line.Split("\n");
+
+                    List<string> lists = new List<string>();
+                    lists.AddRange(values);
+                    foreach (string liner in lists)
+                    {
+                        string[] work = liner.Split(",");
+
+                        if (first == true)
+                        {
+                            count = 0;
+                            foreach (string code in work)
+                            {
+                                
+                                if (code == temp_key)
+                                {
+                                    first = false;
+                                    cur_code_lists.Add(code);
+                                    test.Text += code + "\n";
+                                    break;
+                                }
+                             
+                                count++;
+                            }
+
+                            if (first == true)
+                            {
+                                cur_code_lists.Add("");
+                                test.Text += "" + "\n";
+                            }
+                        }
+                        else
+                        {
+
+                            test.Text += work[count] + "\n";
+                            cur_code_lists.Add(work[count]);
+
+                        }
+                    }
+
+                }
+                sr.Close();
+            }
+
+            sr = new StreamReader(@"res\roma_num.csv");//フィールドデータ読み取り
+            {
+                while (!sr.EndOfStream)
+                {
+                    string line = sr.ReadLine() + "";
+                    string[] values = line.Split("\n");
+
+                    List<string> lists = new List<string>();
+                    lists.AddRange(values);
+                    foreach (string liner in lists)
+                    {
+                        string[] work = liner.Split(",");
+
+
+
+                        test.Text += work[count] + "\n";
+                        cur_roma_lists.Add(work[count]);
+
+
+                    }
+
+                }
+                sr.Close();
+            }
+
+
+            List<string> write_lists =replace_code(ref temp_code_list);
+
+            song_label.Text = "";
+            if (File_path == null) return;
+
+
+            using (StreamWriter sw = new StreamWriter(File_path.Replace(".txt","_"+cur_key+"_.txt"), false,
+                                Encoding.GetEncoding("utf-8")))
+            {
+                foreach (string item in write_lists)
+                {
+
+                    sw.WriteLine(item);
+                    song_label.Text += item + "\n";
+
+                }
+
+                sw.Close();
+            }
+
+            
+
+
+        }
+
+
+
+        private void comp_message_Tick(object sender, EventArgs e)
+        {
+            test.Text = "";
+            comp_message.Stop();
+        }
+
+        private void measure_radio_CheckedChanged(object sender, EventArgs e)
+        {
+            if (active_btn != null)
+            {
+                active_btn[0].BackColor = Color.Black;
+                active_btn[0].ForeColor = Color.LimeGreen;
+                active_btn = null;
+            }
         }
     }
 }
