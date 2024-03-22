@@ -130,7 +130,7 @@
             edit_panel.Location = new Point(12, 3);
             edit_panel.Margin = new Padding(4, 3, 4, 3);
             edit_panel.Name = "edit_panel";
-            edit_panel.Size = new Size(1167, 128);
+            edit_panel.Size = new Size(114, 128);
             edit_panel.TabIndex = 6;
             edit_panel.Visible = false;
             // 

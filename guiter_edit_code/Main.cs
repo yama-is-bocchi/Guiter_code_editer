@@ -106,7 +106,7 @@ namespace guiter_edit_code
 
             if (cur_key.Contains("m"))
             {
-                minus_or_measure = "minus";
+                minus_or_measure = "measure";
                 minus_radio.Checked = true;
             }
             else
@@ -178,9 +178,6 @@ namespace guiter_edit_code
                     foreach (string liner in lists)
                     {
                         string[] work = liner.Split(",");
-
-
-
                         test.Text += work[count] + "\n";
                         cur_roma_lists.Add(work[count]);
 
